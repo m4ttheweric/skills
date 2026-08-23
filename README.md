@@ -24,6 +24,7 @@ prefix, and browser skills ship inside
 ### workflow
 
 - **matt:matts-writing-style** ... voice, concision, and formatting rules for MR descriptions, MR comments, commit messages, and technical writing posted under Matt's name.
+- **matt:wrap-up** ... go through important details, open decisions, and next steps as a form. Uses the current runtime's question tool, or a numbered chat form if the runtime has none.
 
 ## Install
 
@@ -35,6 +36,7 @@ ln -s ~/Documents/GitHub/matt-skills/skills/infra/remote-brainstorm ~/.claude/sk
 ln -s ~/Documents/GitHub/matt-skills/skills/infra/run-feedback ~/.claude/skills/matt:run-feedback
 ln -s ~/Documents/GitHub/matt-skills/skills/orchestration/remote-agent ~/.claude/skills/matt:remote-agent
 ln -s ~/Documents/GitHub/matt-skills/skills/workflow/matts-writing-style ~/.claude/skills/matt:matts-writing-style
+ln -s ~/Documents/GitHub/matt-skills/skills/workflow/wrap-up ~/.claude/skills/matt:wrap-up
 ```
 
 The prefix is asserted in two places per skill: the symlink name above and the

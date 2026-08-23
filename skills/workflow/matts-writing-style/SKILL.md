@@ -12,6 +12,7 @@ These rules apply to any text that will be posted under Matthew's name: MR descr
 ### Hard Constraints
 
 - **No em dashes or en dashes.** Rephrase, use parens, or restructure the sentence.
+- **No detective-story phrases.** "smoking gun", "load-bearing", "razor-sharp", "the money question", "nails it", "the plot thickens", and kin are agent tells, not how Matt talks. Say the plain thing: "the evidence", "the key question", "this confirms it".
 - **Lowercase for technical content.** Assertions, findings, and code discussion are lowercase except proper nouns, ticket prefixes, and code. Short social lines (`Looks good to me! Made some comments.`, `Left a few comments!`) take normal sentence case.
 - **No markdown furniture in MR comments.** No lists, no headings, and no bold except the Conventional Comments label that opens a finding. Fenced code blocks and inline backticks are fine and expected in review findings; short replies stay plain text.
 - **Keep it sparse.** Cut every word that isn't pulling weight. Sparse means no padding, not short: a review finding runs as long as it needs.
