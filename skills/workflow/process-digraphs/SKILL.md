@@ -71,7 +71,7 @@ One example carries every convention: `ellipse` trigger, `box` actions, `plainte
 
 1. Write the process as prose first: states, decision gates, loops, failure paths.
 2. Map each to a node with the right shape. Give every decision a labeled out-edge for **every** outcome.
-3. **Render it. Required.** `dot -Tsvg diagram.dot -o /tmp/d.svg` and open it, or extract every block from a finished SKILL.md with superpowers `render-graphs.js <skill-dir>`. If `dot` is missing: `brew install graphviz`.
+3. **Render it. Required.** For a loose file: `dot -Tsvg diagram.dot -o /tmp/d.svg` and open it. For a SKILL.md, run `./render.sh SKILL.md` (in this skill dir) to render every block and exit non-zero on any parse error. If `dot` is missing: `brew install graphviz`.
 4. Run the design checklist below against the rendered picture.
 5. Paste the ` ```dot ` block into SKILL.md.
 
