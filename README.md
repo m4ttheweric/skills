@@ -44,6 +44,20 @@ ln -s ~/Documents/GitHub/matt-skills/skills/workflow/process-digraphs ~/.claude/
 The prefix is asserted in two places per skill: the symlink name above and the
 `name:` field in that skill's `SKILL.md` frontmatter. They have to agree.
 
+## Claude Code config
+
+`claude/` holds the non-skill Claude Code files that are tracked here and
+symlinked into `~/.claude/`:
+
+- **statusline-command.sh** ... the status line: model and effort, account
+  (via cswap), the Fable weekly pool (F, from cswap's store), weekly usage (W)
+  and context (C), and rt chat presence. `settings.json` points at the
+  `~/.claude` path, so the symlink is what keeps it live.
+
+```bash
+ln -s ~/Documents/GitHub/matt-skills/claude/statusline-command.sh ~/.claude/statusline-command.sh
+```
+
 ## Dependencies
 
 `matt:remote-agent` needs [herdr](https://github.com/ogulcancelik/herdr) and
