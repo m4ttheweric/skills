@@ -13,7 +13,6 @@ prefix, and browser skills ship inside
 
 ### infra
 
-- **matt:local-app** ... set up a local web app as a persistent macOS service with HTTPS via portless and launchd. Handles port selection, plist creation, portless routing, and health checks. Every aliased app is automatically public at `https://<name>.m4tthew.dev` through a shared wildcard Cloudflare tunnel, gated by a per-app publish toggle.
 - **matt:remote-brainstorm** ... expose the superpowers visual brainstorming companion at `https://brainstorm.m4tthew.dev` through the same tunnel pipeline, so a visual brainstorm can be joined away from the machine running it.
 - **matt:run-feedback** ... analyze a run against the training plan with per-mile split breakdown, effort classification, and trend context. Generates data-dense feedback stored in the training app.
 
@@ -32,7 +31,6 @@ prefix, and browser skills ship inside
 Symlink each skill directory into `~/.claude/skills/`, named with its prefix:
 
 ```bash
-ln -s ~/Documents/GitHub/matt-skills/skills/infra/local-app ~/.claude/skills/matt:local-app
 ln -s ~/Documents/GitHub/matt-skills/skills/infra/remote-brainstorm ~/.claude/skills/matt:remote-brainstorm
 ln -s ~/Documents/GitHub/matt-skills/skills/infra/run-feedback ~/.claude/skills/matt:run-feedback
 ln -s ~/Documents/GitHub/matt-skills/skills/orchestration/remote-agent ~/.claude/skills/matt:remote-agent
@@ -63,4 +61,4 @@ ln -s ~/Documents/GitHub/matt-skills/claude/statusline-command.sh ~/.claude/stat
 `matt:remote-agent` needs [herdr](https://github.com/ogulcancelik/herdr) and
 [claude-swap](https://github.com/m4ttheweric/claude-swap).
 `matt:remote-brainstorm` needs the superpowers brainstorming companion and the
-portless pipeline that `matt:local-app` documents.
+portless / Deck pipeline (documented by the deck repo's `deck:add-app` skill).
