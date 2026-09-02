@@ -89,9 +89,21 @@ WHERE metric='sleep_total' AND value <= 12
   AND date >= date('$RUN_DATE','-30 day') AND date < '$RUN_DATE';"
 ```
 
-The `value <= 12` guard drops one bad sleep shape: an old-format night double-counted past 12h. Resting HR, HRV, and respiration get no such filter -- each is its own Apple daily aggregate, so a day whose raw `heart_rate` series is a single sample (common lately) still carries a valid RHR and HRV, and excluding it would only shrink the baseline. A run date can legitimately have no health row at all (watch not worn); if the snapshot is empty, say so and skip the readiness section rather than inventing numbers.
+The `value <= 12` guard drops one bad sleep shape: an old-format night double-counted past 12h. Resting HR, HRV, and respiration get no such filter -- each is its own Apple daily aggregate, so a day whose raw `heart_rate` series is a single sample (common lately) still carries a valid RHR and HRV, and excluding it would only shrink the baseline. A run date can legitimately have no health row at all (watch not worn), and a partial row carrying only RHR is common. Never invent the missing numbers: name which series are absent, then take the weekly figures from step 7 as the fallback.
 
-7. **Generate analysis**
+7. **Pull the weekly sleep-vs-load scorecard**
+
+Step 6 answers "how was this morning". The scorecard answers "how has load-vs-recovery been trending", which is what the trend and recovery sections need.
+
+```bash
+curl -sk "https://training.localhost/api/stats/recovery" | python3 -m json.tool
+```
+
+Returns `target` (8h), `adequate` (7h), `planAvgSleep`, `weeksAtTarget`/`weeksWithSleep`, and a `weeks` array of `{week, weekStart, recovery, current, miles, runs, avgSleep, avgDeep, nights}`. The week flagged `current: true` is the one holding today; weeks with neither a run nor a scored night are already dropped, so a sparse tail is real signal, not missing data.
+
+Read the run's own week plus the two before it. When step 6's run-day row is missing or partial, the scorecard week is the readiness baseline: report that week's `avgSleep` over its `nights` count in place of the absent night, labelled as a weekly average rather than a run-day value.
+
+8. **Generate analysis**
 
 Build `analysis_json` (structured data) and `narrative` (markdown text). The narrative MUST follow this structure:
 
@@ -115,21 +127,23 @@ Build `analysis_json` (structured data) and `narrative` (markdown text). The nar
 - Any fitness signals (pace improving at same HR, or HR dropping for same pace)
 - Heat acclimatization signal if applicable
 
-**Readiness context** (from the health DB; skip the whole section if there was no health row for the date):
+**Readiness context** (from the health DB; when the run-day row is absent or partial, report the weekly figures from step 7 instead of dropping the section):
 - Sleep the night before: total hours + stage breakdown (deep / REM / core), vs the 30-day sleep average (state the delta)
 - Morning RHR vs 30-day baseline (state the delta in bpm; elevated flags accumulated fatigue or illness)
 - HRV vs 30-day baseline (state the delta in ms; a drop signals reduced recovery)
 - Respiratory rate vs baseline (an elevated rate is a secondary illness/stress signal)
+- REQUIRED, whether or not the run-day row is complete: the run's week from the scorecard -- its `avgSleep` over `nights` scored and its `miles`, against `planAvgSleep` and the `weeksAtTarget`/`weeksWithSleep` count. State it as a weekly average, distinct from the run-day night.
 - Tie it to the run's ACTUAL avg HR from the Effort summary above, not a prediction: if a readiness signal is off and the run's HR ran high for its pace, name the link (e.g. "HRV down 15ms and the run's HR sat 6 bpm over the easy baseline -- the cost showed up as fatigue, not heat").
 
 **Recovery implication**:
 - What's the next planned workout?
 - Does this run's effort level change how that workout should be approached?
 - Fold in readiness: short sleep, elevated RHR, or suppressed HRV is a reason to hold back the next hard session; a fully-recovered profile is a green light.
+- REQUIRED: read the current week's `miles` against its `avgSleep`. When `weeksAtTarget` is a small fraction of `weeksWithSleep`, sleep is the standing limiter and the next session should be gated on it, not on the last run's cost.
 
 All numbers must use actual data, not approximations. Cite the specific values from the splits, weather, readiness snapshot, and baseline computations.
 
-8. **Post the feedback**
+9. **Post the feedback**
 
 ```bash
 curl -s -X POST "https://training.localhost/api/activities/{strava_id}/feedback" \
@@ -144,6 +158,6 @@ curl -s -X POST "https://training.localhost/api/activities/{strava_id}/feedback"
   }'
 ```
 
-9. **Confirm to the user**
+10. **Confirm to the user**
 
 Print a brief summary of the key finding (e.g., "Feedback saved for your July 9 run. Key takeaway: ran 34s/mi faster than prescribed easy pace, HR 5 bpm above your baseline, on 5.2h sleep and HRV down 10ms."). The full narrative is on the plan page now.
