@@ -13,6 +13,7 @@ prefix, and browser skills ship inside
 
 ### infra
 
+- **matt:npm-publish** ... publish to npmjs.com without the login/OTP grind. Auth is a 90-day granular token in `~/.npmrc`; the mandatory 2FA code is pulled from Bitwarden and passed to `npm publish --otp=`. Unlock the vault once per session (master password into a popped Terminal window), then publishing is hands-free.
 - **matt:remote-brainstorm** ... expose the superpowers visual brainstorming companion at `https://brainstorm.m4tthew.dev` through the same tunnel pipeline, so a visual brainstorm can be joined away from the machine running it.
 - **matt:run-feedback** ... analyze a run against the training plan with per-mile split breakdown, effort classification, and trend context. Generates data-dense feedback stored in the training app.
 
@@ -31,6 +32,7 @@ prefix, and browser skills ship inside
 Symlink each skill directory into `~/.claude/skills/`, named with its prefix:
 
 ```bash
+ln -s ~/Documents/GitHub/matt-skills/skills/infra/npm-publish ~/.claude/skills/matt:npm-publish
 ln -s ~/Documents/GitHub/matt-skills/skills/infra/remote-brainstorm ~/.claude/skills/matt:remote-brainstorm
 ln -s ~/Documents/GitHub/matt-skills/skills/infra/run-feedback ~/.claude/skills/matt:run-feedback
 ln -s ~/Documents/GitHub/matt-skills/skills/orchestration/remote-agent ~/.claude/skills/matt:remote-agent
