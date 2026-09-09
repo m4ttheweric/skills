@@ -51,7 +51,7 @@ symlinked into `~/.claude/`:
 
 - **statusline-command.sh** ... the status line: model and effort, account
   (via cswap), an ongoing superpowers implementation's progress bar and
-  current task (from the SDD ledger at `.superpowers/sdd/<plan>/progress.md`
+  task count (from the SDD ledger at `.superpowers/sdd/<plan>/progress.md`
   when one was touched in the last 7 days, counting `Task N: complete` lines
   against the plan's `### Task N:` headings; falls back to a partially
   checked plan under `docs/superpowers/plans/` or

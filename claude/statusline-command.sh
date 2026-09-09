@@ -125,7 +125,7 @@ fi
 # instead of a ledger. Untouched plans (0 checked) stay hidden: a written plan
 # is not an ongoing implementation.
 plan_seg=""
-plan_checked="" plan_total="" plan_name="" plan_label=""
+plan_checked="" plan_total="" plan_name=""
 sp_cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
 sp_worktree=$(echo "$input" | jq -r '.worktree.path // empty')
 sp_project=$(echo "$input" | jq -r '.workspace.project_dir // empty')
@@ -154,18 +154,7 @@ if [ -n "$sp_root" ]; then
       plan_total=$(grep -cE '^##+ Task [0-9]+[:.]' "$sdd_plan")
       plan_checked=$(grep -E '^Task [0-9]+: complete' "$ledger" |
         sed -E 's/^Task ([0-9]+):.*/\1/' | sort -un | wc -l | tr -d ' ')
-      cur_task=""
-      t=1
-      while [ "$t" -le "$plan_total" ]; do
-        grep -qE "^Task $t: complete" "$ledger" || { cur_task=$t; break; }
-        t=$((t + 1))
-      done
       plan_name=$(basename "$sdd_plan" .md | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
-      if [ -n "$cur_task" ]; then
-        plan_label=$(grep -m1 -E "^##+ Task $cur_task[:.]" "$sdd_plan" |
-          sed -E "s/^#+ Task $cur_task[:.][[:space:]]*//")
-        plan_label="T$cur_task $plan_label"
-      fi
     fi
   fi
 fi
@@ -184,20 +173,15 @@ if [ -z "$plan_total" ] || [ "$plan_total" -eq 0 ]; then
 
   plan_file=$(ls -t "$plans_dir"/*.md 2>/dev/null | head -1)
   if [ -n "$plan_file" ]; then
-    # Prints "<checked> <total> <label>", where label is the nearest markdown
-    # heading above the first unchecked task, the plan's current placement.
     parsed=$(awk '
-      /^#+[ \t]/ { h = $0; sub(/^#+[ \t]*/, "", h) }
       /^[ \t]*-[ \t]*\[[ xX]\]/ {
         total++
         if ($0 ~ /\[[xX]\]/) { checked++ }
-        else if (!found) { cur = h; found = 1 }
       }
-      END { printf "%d %d %s\n", checked+0, total+0, cur }
+      END { printf "%d %d\n", checked+0, total+0 }
     ' "$plan_file")
     plan_checked=$(echo "$parsed" | cut -d' ' -f1)
     plan_total=$(echo "$parsed" | cut -d' ' -f2)
-    plan_label=$(echo "$parsed" | cut -d' ' -f3-)
     plan_name=$(basename "$plan_file" .md | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
     # Checkbox mode needs at least one checked box to count as ongoing.
     [ -n "$plan_checked" ] && [ "$plan_checked" -eq 0 ] && plan_total=0
@@ -209,9 +193,7 @@ if [ -n "$plan_total" ] && [ "$plan_total" -gt 0 ] &&
   plan_filled=$((plan_checked * 10 / plan_total))
   plan_empty=$((10 - plan_filled))
   plan_bar=$(printf '%*s' "$plan_filled" '' | tr ' ' '█')$(printf '%*s' "$plan_empty" '' | tr ' ' '░')
-  plan_label=$(echo "$plan_label" | tr -d '`*' | cut -c1-26 | sed 's/ *$//')
   plan_seg="$plan_name $plan_bar $plan_checked/$plan_total"
-  [ -n "$plan_label" ] && plan_seg="$plan_seg $plan_label"
 fi
 
 segments=("$model" "$email")
