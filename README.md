@@ -50,8 +50,10 @@ The prefix is asserted in two places per skill: the symlink name above and the
 symlinked into `~/.claude/`:
 
 - **statusline-command.sh** ... the status line: model and effort, account
-  (via cswap), an ongoing superpowers implementation's progress bar and
-  task count (from the SDD ledger at `.superpowers/sdd/<plan>/progress.md`
+  (via cswap), an ongoing superpowers implementation's progress bar (filled
+  cells color-graded orange/gold/green by completion, segment at normal
+  intensity) and task count (from the SDD ledger at
+  `.superpowers/sdd/<plan>/progress.md`
   when one was touched in the last 7 days, counting `Task N: complete` lines
   against the plan's `### Task N:` headings; falls back to a partially
   checked plan under `docs/superpowers/plans/` or

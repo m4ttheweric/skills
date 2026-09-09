@@ -192,8 +192,25 @@ if [ -n "$plan_total" ] && [ "$plan_total" -gt 0 ] &&
    [ -n "$plan_checked" ] && [ "$plan_checked" -lt "$plan_total" ]; then
   plan_filled=$((plan_checked * 10 / plan_total))
   plan_empty=$((10 - plan_filled))
-  plan_bar=$(printf '%*s' "$plan_filled" '' | tr ' ' '█')$(printf '%*s' "$plan_empty" '' | tr ' ' '░')
-  plan_seg="$plan_name $plan_bar $plan_checked/$plan_total"
+  # Filled cells are color-graded by completion (orange under a third, gold to
+  # two thirds, green above); empty cells stay dim.
+  plan_pct=$((plan_checked * 100 / plan_total))
+  if [ "$plan_pct" -lt 34 ]; then
+    bar_color='\033[38;5;208m'
+  elif [ "$plan_pct" -lt 67 ]; then
+    bar_color='\033[38;5;220m'
+  else
+    bar_color='\033[38;5;77m'
+  fi
+  # The segment leads with a reset: the render loop below wraps every segment
+  # in dim, and this segment shows at normal intensity instead. The escapes
+  # must be real ESC bytes here (printf-expanded), since the loop passes
+  # segments through %s untouched.
+  plan_seg=$(printf "\033[0m%s ${bar_color}%s\033[0m\033[2m%s\033[0m %s" \
+    "$plan_name" \
+    "$(printf '%*s' "$plan_filled" '' | tr ' ' '█')" \
+    "$(printf '%*s' "$plan_empty" '' | tr ' ' '░')" \
+    "$plan_checked/$plan_total")
 fi
 
 segments=("$model" "$email")
