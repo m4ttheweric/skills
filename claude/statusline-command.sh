@@ -107,34 +107,85 @@ else
   chat_str="offline"
 fi
 
-# In-progress superpowers plan: per ~/.claude/rules/superpowers-docs-location.md
-# plans live at docs/superpowers/plans/ by default, or .local-dev/superpowers/plans/
-# in assured-dev. A plan's own checkboxes ("- [ ]" / "- [x]") are its ledger; no
-# separate progress file exists. Walk cwd -> worktree -> project root so a session
-# working inside a worktree still finds that worktree's own plan first. Only the
-# most recently modified plan is considered, and only while work remains -- a
-# fully checked plan is no longer "ongoing" and drops out of the statusline.
+# In-progress superpowers implementation, walking cwd -> worktree -> project
+# root so a session inside a worktree finds that tree's own state first.
+#
+# Primary signal: the subagent-driven-development ledger at
+# .superpowers/sdd/<plan-basename>/progress.md. Its first line names the plan
+# file, and each finished task gets a "Task <N>: complete" line; the plan's
+# checkboxes are NOT updated during SDD runs, so they can't measure progress
+# there. Only a ledger touched in the last 7 days counts as ongoing (SDD
+# appends to it constantly while running; stale ledgers are abandoned or
+# superseded work). Task 6 in real ledgers has two "complete" lines, so
+# completion counts unique task numbers, and "implementer complete" / "review
+# Approved" lines must not match.
+#
+# Fallback: a plan under docs/superpowers/plans/ (.local-dev/superpowers/plans/
+# in assured-dev) with SOME boxes checked, for work tracked by checkboxes
+# instead of a ledger. Untouched plans (0 checked) stay hidden: a written plan
+# is not an ongoing implementation.
 plan_seg=""
+plan_checked="" plan_total="" plan_name="" plan_label=""
 sp_cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
 sp_worktree=$(echo "$input" | jq -r '.worktree.path // empty')
 sp_project=$(echo "$input" | jq -r '.workspace.project_dir // empty')
 
-plans_dir=""
-for sp_root in "$sp_cwd" "$sp_worktree" "$sp_project"; do
-  [ -n "$sp_root" ] || continue
-  for sp_rel in ".local-dev/superpowers/plans" "docs/superpowers/plans"; do
-    if [ -d "$sp_root/$sp_rel" ]; then
-      plans_dir="$sp_root/$sp_rel"
+sp_root=""
+for sp_r in "$sp_cwd" "$sp_worktree" "$sp_project"; do
+  [ -n "$sp_r" ] || continue
+  for sp_rel in ".superpowers/sdd" ".local-dev/superpowers/plans" "docs/superpowers/plans"; do
+    if [ -d "$sp_r/$sp_rel" ]; then
+      sp_root="$sp_r"
       break 2
     fi
   done
 done
 
-if [ -n "$plans_dir" ]; then
+if [ -n "$sp_root" ]; then
+  ledger=$(ls -t "$sp_root"/.superpowers/sdd/*/progress.md 2>/dev/null | head -1)
+  if [ -n "$ledger" ] && [ -n "$(find "$ledger" -mtime -7 2>/dev/null)" ] &&
+     head -1 "$ledger" | grep -q '^# SDD ledger'; then
+    sdd_plan=$(head -1 "$ledger" | sed 's/.*plan:[[:space:]]*//')
+    case "$sdd_plan" in
+      /*) : ;;
+      *) sdd_plan="$sp_root/$sdd_plan" ;;
+    esac
+    if [ -f "$sdd_plan" ]; then
+      plan_total=$(grep -cE '^##+ Task [0-9]+[:.]' "$sdd_plan")
+      plan_checked=$(grep -E '^Task [0-9]+: complete' "$ledger" |
+        sed -E 's/^Task ([0-9]+):.*/\1/' | sort -un | wc -l | tr -d ' ')
+      cur_task=""
+      t=1
+      while [ "$t" -le "$plan_total" ]; do
+        grep -qE "^Task $t: complete" "$ledger" || { cur_task=$t; break; }
+        t=$((t + 1))
+      done
+      plan_name=$(basename "$sdd_plan" .md | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
+      if [ -n "$cur_task" ]; then
+        plan_label=$(grep -m1 -E "^##+ Task $cur_task[:.]" "$sdd_plan" |
+          sed -E "s/^#+ Task $cur_task[:.][[:space:]]*//")
+        plan_label="T$cur_task $plan_label"
+      fi
+    fi
+  fi
+fi
+
+if [ -z "$plan_total" ] || [ "$plan_total" -eq 0 ]; then
+  plans_dir=""
+  for sp_r in "$sp_cwd" "$sp_worktree" "$sp_project"; do
+    [ -n "$sp_r" ] || continue
+    for sp_rel in ".local-dev/superpowers/plans" "docs/superpowers/plans"; do
+      if [ -d "$sp_r/$sp_rel" ]; then
+        plans_dir="$sp_r/$sp_rel"
+        break 2
+      fi
+    done
+  done
+
   plan_file=$(ls -t "$plans_dir"/*.md 2>/dev/null | head -1)
   if [ -n "$plan_file" ]; then
     # Prints "<checked> <total> <label>", where label is the nearest markdown
-    # heading above the first unchecked task -- the plan's current placement.
+    # heading above the first unchecked task, the plan's current placement.
     parsed=$(awk '
       /^#+[ \t]/ { h = $0; sub(/^#+[ \t]*/, "", h) }
       /^[ \t]*-[ \t]*\[[ xX]\]/ {
@@ -147,17 +198,20 @@ if [ -n "$plans_dir" ]; then
     plan_checked=$(echo "$parsed" | cut -d' ' -f1)
     plan_total=$(echo "$parsed" | cut -d' ' -f2)
     plan_label=$(echo "$parsed" | cut -d' ' -f3-)
-
-    if [ -n "$plan_total" ] && [ "$plan_total" -gt 0 ] && [ "$plan_checked" -lt "$plan_total" ]; then
-      plan_filled=$((plan_checked * 10 / plan_total))
-      plan_empty=$((10 - plan_filled))
-      plan_bar=$(printf '%*s' "$plan_filled" '' | tr ' ' '█')$(printf '%*s' "$plan_empty" '' | tr ' ' '░')
-      plan_name=$(basename "$plan_file" .md | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
-      plan_label=$(echo "$plan_label" | cut -c1-28)
-      plan_seg="$plan_name $plan_bar $plan_checked/$plan_total"
-      [ -n "$plan_label" ] && plan_seg="$plan_seg $plan_label"
-    fi
+    plan_name=$(basename "$plan_file" .md | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
+    # Checkbox mode needs at least one checked box to count as ongoing.
+    [ -n "$plan_checked" ] && [ "$plan_checked" -eq 0 ] && plan_total=0
   fi
+fi
+
+if [ -n "$plan_total" ] && [ "$plan_total" -gt 0 ] &&
+   [ -n "$plan_checked" ] && [ "$plan_checked" -lt "$plan_total" ]; then
+  plan_filled=$((plan_checked * 10 / plan_total))
+  plan_empty=$((10 - plan_filled))
+  plan_bar=$(printf '%*s' "$plan_filled" '' | tr ' ' '█')$(printf '%*s' "$plan_empty" '' | tr ' ' '░')
+  plan_label=$(echo "$plan_label" | tr -d '`*' | cut -c1-26 | sed 's/ *$//')
+  plan_seg="$plan_name $plan_bar $plan_checked/$plan_total"
+  [ -n "$plan_label" ] && plan_seg="$plan_seg $plan_label"
 fi
 
 segments=("$model" "$email")
