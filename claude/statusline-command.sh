@@ -84,11 +84,26 @@ if [ "$model_word1" = "Fable" ] && [ -n "$cswap_json" ] && [ -n "$email_full" ];
   fable=$(printf '%s' "$cswap_json" | jq -r --arg e "$email_full" '.accounts[] | select(.email == $e) | .usage.scoped[]? | select(.name == "Fable") | .pct // empty' 2>/dev/null | head -1)
 fi
 
+# Usage values carry cswap's severity ramp (claude-swap tui/theme.py): green
+# under 70%, amber from 70%, soft red from 90%, so the statusline and cswap's
+# TUI agree on when a pool is "climbing" or "near the limit". Labels stay the
+# default color; only the value is colored.
+sev_pct() {
+  local p
+  p=$(printf '%.0f' "$1")
+  if [ "$p" -ge 90 ]; then
+    printf '\033[38;2;215;95;95m%s%%\033[0m' "$p"
+  elif [ "$p" -ge 70 ]; then
+    printf '\033[38;2;215;175;95m%s%%\033[0m' "$p"
+  else
+    printf '\033[38;2;135;175;135m%s%%\033[0m' "$p"
+  fi
+}
 usage=""
-[ -n "$fable" ] && usage="${usage}F:$(printf '%.0f' "$fable")% "
-[ -n "$week" ] && usage="${usage}W:$(printf '%.0f' "$week")% "
-[ -n "$context" ] && usage="${usage}C:$(printf '%.0f' "$context")%"
-usage=$(echo "$usage" | sed 's/ *$//')
+[ -n "$fable" ] && usage="${usage}F:$(sev_pct "$fable") "
+[ -n "$week" ] && usage="${usage}W:$(sev_pct "$week") "
+[ -n "$context" ] && usage="${usage}C:$(sev_pct "$context")"
+usage="${usage% }"
 
 # Whether THIS session is signed in to rt chat (the agent group chat), shown
 # as the session's chat handle. The rt CLI writes a session file on sign-in
@@ -202,11 +217,9 @@ if [ -n "$plan_total" ] && [ "$plan_total" -gt 0 ] &&
   else
     bar_color='\033[38;5;77m'
   fi
-  # The segment leads with a reset: the render loop below wraps every segment
-  # in dim, and this segment shows at normal intensity instead. The escapes
-  # must be real ESC bytes here (printf-expanded), since the loop passes
-  # segments through %s untouched.
-  plan_seg=$(printf "\033[0m%s ${bar_color}%s\033[0m\033[2m%s\033[0m %s" \
+  # Escapes must land here as real ESC bytes (printf-expanded); the output
+  # path passes segments through %s untouched.
+  plan_seg=$(printf "%s ${bar_color}%s\033[0m%s %s" \
     "$plan_name" \
     "$(printf '%*s' "$plan_filled" '' | tr ' ' '█')" \
     "$(printf '%*s' "$plan_empty" '' | tr ' ' '░')" \
@@ -221,9 +234,9 @@ segments+=("$chat_str")
 out=""
 for seg in "${segments[@]}"; do
   if [ -z "$out" ]; then
-    out=$(printf '\033[2m%s\033[0m' "$seg")
+    out="$seg"
   else
-    out=$(printf '%s \033[2m|\033[0m \033[2m%s\033[0m' "$out" "$seg")
+    out="$out | $seg"
   fi
 done
 printf '%s\n' "$out"

@@ -51,14 +51,15 @@ symlinked into `~/.claude/`:
 
 - **statusline-command.sh** ... the status line: model and effort, account
   (via cswap), an ongoing superpowers implementation's progress bar (filled
-  cells color-graded orange/gold/green by completion, segment at normal
-  intensity) and task count (from the SDD ledger at
-  `.superpowers/sdd/<plan>/progress.md`
+  cells color-graded orange/gold/green by completion) and task count (from
+  the SDD ledger at `.superpowers/sdd/<plan>/progress.md`
   when one was touched in the last 7 days, counting `Task N: complete` lines
   against the plan's `### Task N:` headings; falls back to a partially
   checked plan under `docs/superpowers/plans/` or
   `.local-dev/superpowers/plans/`), the Fable weekly pool (F, from cswap's
-  store), weekly usage (W) and context (C), and rt chat presence.
+  store), weekly usage (W) and context (C) with values colored on cswap's
+  severity ramp (green under 70%, amber from 70%, red from 90%), and rt chat
+  presence. No dim styling; everything renders at normal intensity.
   `settings.json` points at the `~/.claude` path, so the symlink is what
   keeps it live.
 
