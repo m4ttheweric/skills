@@ -1,8 +1,9 @@
 #!/bin/bash
 # Claude Code status line: shows the active model (abbreviated to its first
-# letter), account email, the Fable weekly pool (F, Fable sessions only),
-# weekly usage (W) and context usage (C), then whether this session is signed
-# in to rt chat.
+# letter), account email, an in-progress superpowers plan's completion (when
+# one is found for this workspace), the Fable weekly pool (F, Fable sessions
+# only), weekly usage (W) and context usage (C), then whether this session is
+# signed in to rt chat.
 
 input=$(cat)
 
@@ -106,7 +107,61 @@ else
   chat_str="offline"
 fi
 
+# In-progress superpowers plan: per ~/.claude/rules/superpowers-docs-location.md
+# plans live at docs/superpowers/plans/ by default, or .local-dev/superpowers/plans/
+# in assured-dev. A plan's own checkboxes ("- [ ]" / "- [x]") are its ledger; no
+# separate progress file exists. Walk cwd -> worktree -> project root so a session
+# working inside a worktree still finds that worktree's own plan first. Only the
+# most recently modified plan is considered, and only while work remains -- a
+# fully checked plan is no longer "ongoing" and drops out of the statusline.
+plan_seg=""
+sp_cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
+sp_worktree=$(echo "$input" | jq -r '.worktree.path // empty')
+sp_project=$(echo "$input" | jq -r '.workspace.project_dir // empty')
+
+plans_dir=""
+for sp_root in "$sp_cwd" "$sp_worktree" "$sp_project"; do
+  [ -n "$sp_root" ] || continue
+  for sp_rel in ".local-dev/superpowers/plans" "docs/superpowers/plans"; do
+    if [ -d "$sp_root/$sp_rel" ]; then
+      plans_dir="$sp_root/$sp_rel"
+      break 2
+    fi
+  done
+done
+
+if [ -n "$plans_dir" ]; then
+  plan_file=$(ls -t "$plans_dir"/*.md 2>/dev/null | head -1)
+  if [ -n "$plan_file" ]; then
+    # Prints "<checked> <total> <label>", where label is the nearest markdown
+    # heading above the first unchecked task -- the plan's current placement.
+    parsed=$(awk '
+      /^#+[ \t]/ { h = $0; sub(/^#+[ \t]*/, "", h) }
+      /^[ \t]*-[ \t]*\[[ xX]\]/ {
+        total++
+        if ($0 ~ /\[[xX]\]/) { checked++ }
+        else if (!found) { cur = h; found = 1 }
+      }
+      END { printf "%d %d %s\n", checked+0, total+0, cur }
+    ' "$plan_file")
+    plan_checked=$(echo "$parsed" | cut -d' ' -f1)
+    plan_total=$(echo "$parsed" | cut -d' ' -f2)
+    plan_label=$(echo "$parsed" | cut -d' ' -f3-)
+
+    if [ -n "$plan_total" ] && [ "$plan_total" -gt 0 ] && [ "$plan_checked" -lt "$plan_total" ]; then
+      plan_filled=$((plan_checked * 10 / plan_total))
+      plan_empty=$((10 - plan_filled))
+      plan_bar=$(printf '%*s' "$plan_filled" '' | tr ' ' '█')$(printf '%*s' "$plan_empty" '' | tr ' ' '░')
+      plan_name=$(basename "$plan_file" .md | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
+      plan_label=$(echo "$plan_label" | cut -c1-28)
+      plan_seg="$plan_name $plan_bar $plan_checked/$plan_total"
+      [ -n "$plan_label" ] && plan_seg="$plan_seg $plan_label"
+    fi
+  fi
+fi
+
 segments=("$model" "$email")
+[ -n "$plan_seg" ] && segments+=("$plan_seg")
 [ -n "$usage" ] && segments+=("$usage")
 segments+=("$chat_str")
 

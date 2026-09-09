@@ -50,9 +50,12 @@ The prefix is asserted in two places per skill: the symlink name above and the
 symlinked into `~/.claude/`:
 
 - **statusline-command.sh** ... the status line: model and effort, account
-  (via cswap), the Fable weekly pool (F, from cswap's store), weekly usage (W)
-  and context (C), and rt chat presence. `settings.json` points at the
-  `~/.claude` path, so the symlink is what keeps it live.
+  (via cswap), an in-progress superpowers plan's completion bar and current
+  placement (when `docs/superpowers/plans/` or `.local-dev/superpowers/plans/`
+  has one, per the checkbox ledger in the plan file itself), the Fable weekly
+  pool (F, from cswap's store), weekly usage (W) and context (C), and rt chat
+  presence. `settings.json` points at the `~/.claude` path, so the symlink is
+  what keeps it live.
 
 ```bash
 ln -s ~/Documents/GitHub/matt-skills/claude/statusline-command.sh ~/.claude/statusline-command.sh
