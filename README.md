@@ -27,6 +27,10 @@ prefix, and browser skills ship inside
 - **matt:wrap-up** ... go through important details, open decisions, and next steps as a form. Uses the current runtime's question tool, or a numbered chat form if the runtime has none.
 - **matt:process-digraphs** ... write a Graphviz `digraph` process flowchart for a SKILL.md. Covers the shape vocabulary (diamond, box, plaintext, octagon, doublecircle), the sentence-as-node-id house style, bounded loops with breakers, and the mandatory `dot` render before it ships.
 
+### utilities
+
+- **matt:tldr** ... redo the previous response shorter and in plain language, keeping the same conclusion.
+
 ## Install
 
 Symlink each skill directory into `~/.claude/skills/`, named with its prefix:
@@ -39,6 +43,7 @@ ln -s ~/Documents/GitHub/matt-skills/skills/orchestration/remote-agent ~/.claude
 ln -s ~/Documents/GitHub/matt-skills/skills/workflow/matts-writing-style ~/.claude/skills/matt:matts-writing-style
 ln -s ~/Documents/GitHub/matt-skills/skills/workflow/wrap-up ~/.claude/skills/matt:wrap-up
 ln -s ~/Documents/GitHub/matt-skills/skills/workflow/process-digraphs ~/.claude/skills/matt:process-digraphs
+ln -s ~/Documents/GitHub/matt-skills/skills/utilities/tldr ~/.claude/skills/matt:tldr
 ```
 
 The prefix is asserted in two places per skill: the symlink name above and the
