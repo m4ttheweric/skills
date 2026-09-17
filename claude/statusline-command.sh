@@ -127,13 +127,14 @@ fi
 #
 # Primary signal: the subagent-driven-development ledger at
 # .superpowers/sdd/<plan-basename>/progress.md. Its first line names the plan
-# file, and each finished task gets a "Task <N>: complete" line; the plan's
-# checkboxes are NOT updated during SDD runs, so they can't measure progress
-# there. Only a ledger touched in the last 7 days counts as ongoing (SDD
-# appends to it constantly while running; stale ledgers are abandoned or
-# superseded work). Task 6 in real ledgers has two "complete" lines, so
-# completion counts unique task numbers, and "implementer complete" / "review
-# Approved" lines must not match.
+# file, and each finished task gets a completion line; the plan's checkboxes
+# are NOT updated during SDD runs, so they can't measure progress there. Only
+# a ledger touched in the last 7 days counts as ongoing (SDD appends to it
+# constantly while running; stale ledgers are abandoned or superseded work).
+# The match is case-insensitive and not anchored to line start, so variant
+# phrasing (e.g. "Task 7 repo-side COMPLETE" mid-line) counts alongside the
+# canonical "Task N: complete". Completion counts unique task numbers (Task 6
+# has two lines); "implementer complete" lines are excluded (partial step).
 #
 # Fallback: a plan under docs/superpowers/plans/ (.local-dev/superpowers/plans/
 # in assured-dev) with SOME boxes checked, for work tracked by checkboxes
@@ -167,8 +168,14 @@ if [ -n "$sp_root" ]; then
     esac
     if [ -f "$sdd_plan" ]; then
       plan_total=$(grep -cE '^##+ Task [0-9]+[:.]' "$sdd_plan")
-      plan_checked=$(grep -E '^Task [0-9]+: complete' "$ledger" |
-        sed -E 's/^Task ([0-9]+):.*/\1/' | sort -un | wc -l | tr -d ' ')
+      plan_checked=$(grep -iE 'Task [0-9]+.*complete' "$ledger" |
+        grep -vi 'implementer complete' |
+        sed -E 's/.*Task ([0-9]+).*/\1/' | sort -un | wc -l | tr -d ' ')
+      # A "FINAL" line at the start of a ledger entry is the plan-level
+      # completion signal; treat it as all tasks done.
+      if grep -qE '^FINAL\b' "$ledger"; then
+        plan_checked="$plan_total"
+      fi
       plan_name=$(basename "$sdd_plan" .md | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
     fi
   fi
@@ -204,11 +211,12 @@ if [ -z "$plan_total" ] || [ "$plan_total" -eq 0 ]; then
 fi
 
 if [ -n "$plan_total" ] && [ "$plan_total" -gt 0 ] &&
-   [ -n "$plan_checked" ] && [ "$plan_checked" -lt "$plan_total" ]; then
+   [ -n "$plan_checked" ] && [ "$plan_checked" -ge "$plan_total" ]; then
+  plan_seg=$(printf "%s \033[38;5;77m✅\033[0m" "$plan_name")
+elif [ -n "$plan_total" ] && [ "$plan_total" -gt 0 ] &&
+   [ -n "$plan_checked" ]; then
   plan_filled=$((plan_checked * 10 / plan_total))
   plan_empty=$((10 - plan_filled))
-  # Filled cells are color-graded by completion (orange under a third, gold to
-  # two thirds, green above); empty cells stay dim.
   plan_pct=$((plan_checked * 100 / plan_total))
   if [ "$plan_pct" -lt 34 ]; then
     bar_color='\033[38;5;208m'
@@ -217,8 +225,6 @@ if [ -n "$plan_total" ] && [ "$plan_total" -gt 0 ] &&
   else
     bar_color='\033[38;5;77m'
   fi
-  # Escapes must land here as real ESC bytes (printf-expanded); the output
-  # path passes segments through %s untouched.
   plan_seg=$(printf "%s ${bar_color}%s\033[0m%s %s" \
     "$plan_name" \
     "$(printf '%*s' "$plan_filled" '' | tr ' ' '█')" \
