@@ -142,9 +142,9 @@ Examples of Matthew's style:
 
 ### MR Descriptions
 
-**Read `~/.claude/rules/mr-writing-style.md` before drafting.** The bullets
-below are a reminder of what is in it, not a substitute for it. The rule
-carries a word target, a required section structure, and a list of
+**Read `mr-writing-style.md` (in this skill's directory) before drafting.**
+The bullets below are a reminder of what is in it, not a substitute for it.
+The rule carries a word target, a required section structure, and a list of
 anti-patterns that a summary cannot convey.
 
 - Title: lowercase after the ticket prefix (`ABC-1521: surface "archived at" timestamp ...`)
