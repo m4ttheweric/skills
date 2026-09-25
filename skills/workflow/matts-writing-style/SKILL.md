@@ -147,6 +147,8 @@ The bullets below are a reminder of what is in it, not a substitute for it.
 The rule carries a word target, a required section structure, and a list of
 anti-patterns that a summary cannot convey.
 
+- Structure: the repo's own MR template, every section, helper line and box kept in place
+- Checklist: no flag means both flag boxes ticked; tests box when you wrote tests; preview boxes stay unticked for the developer
 - Title: lowercase after the ticket prefix (`ABC-1521: surface "archived at" timestamp ...`)
 - Framing: 1-2 sentences explaining what this does and why
 - Bullets: one clause each, action-first (`Adds`, `Threads`, `Maps`), files in backticks

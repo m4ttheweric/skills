@@ -2,9 +2,34 @@
 
 > Scope: Writing style for GitLab MR descriptions. Apply when drafting or editing an MR description.
 
-When drafting or updating an MR description, follow the house style below. Default to **Template-Preserving** unless the change is a tiny one-liner with a clear screenshot payload.
+The repo's own MR template is the structure of every MR description. This
+file covers what goes into it: which boxes to tick, and how the prose reads.
 
 Cross-rule: never use em dashes (`—`) or en dashes (`–`). See `no-em-dashes.md`. Use ellipses (`...`), parens, or rephrase.
+
+## The template is the skeleton
+
+Before drafting, read the repo's MR template: `.gitlab/merge_request_templates/Default.md`
+on GitLab, `.github/pull_request_template.md` on GitHub, or the one the
+repo's AGENTS.md names. Start from a copy of it and fill it in:
+
+- Every heading, `---` divider, italic helper line, link, checkbox and
+  trailing note stays where the template put it, in the template's order.
+- Your content replaces only the empty placeholders: a bare `-` bullet, or
+  the blank space under a heading's helper line.
+- A repo with no template gets the fallback at the bottom of this file.
+
+## Checklist boxes are attestations
+
+A ticked box is a claim you did the thing. Tick exactly these, and leave
+every other box unticked for the developer:
+
+| Box | Tick it when |
+|---|---|
+| "should be behind a feature flag" | Always, when the change adds no flag: nothing needed gating. When it adds one, tick it once the new behavior sits behind that flag. |
+| "all values of the feature flag have been tested" (the child box) | Always, when the change adds no flag: with one code path, the verification evidence covers every value. When it adds one, tick it only if your evidence shows every value. |
+| "appropriate tests have been created or updated" | You wrote or updated tests. Add one sub-bullet: the count and the suite result (`12 new tests; full cart suite 319/319 green`). |
+| Preview environment, and every preview e2e option | Never yours to tick. Leave them all unticked, including "not run because": only the developer can attest a preview was tested and how its e2es ran. |
 
 ## Length target
 
@@ -12,58 +37,31 @@ Aim for **150-250 words above the checklist**, including the framing paragraph a
 
 Reference: strong teammate MRs sit around 200 words, and so do the user's own. If your draft is double that, you have padding to remove.
 
-## Structure (default)
+## Filling the What section
+
+Under the template's helper line: one or two framing sentences (what this
+MR does and why, plain english), then bullets. Group bullets under bold
+labels when there is more than one area of change:
 
 ```markdown
-## <short value-first title for the work>
+## What
 
-<one or two short framing sentences. plain english. what this MR does and why.>
+_List high-level changes included in this work and why they were necessary_
 
-### What changed
+Adds a refund reason picker so support can tag why an order was refunded. Reasons feed the weekly refunds report.
 
-**<Bold subsection label 1>** (optional path or scope)
+**Picker** (`src/orders/refunds/`)
 
-- <one-clause bullet>
-- <one-clause bullet>
+- Adds `RefundReasonSelect` with the five reasons from the report spec
+- Requires a reason before `RefundDialog` submits
 
-**<Bold subsection label 2>**
+**Also**
 
-- <one-clause bullet>
-- <one-clause bullet>
+- Renames `refundNote` to `refundComment` in the dialog state
 
-**Also** (optional, for orthogonal changes worth calling out)
+**Follow-up**
 
-- <one-line bullet>
-- <one-line bullet>
-
-### Follow-up (optional)
-
-- <one-line bullet pointing at the descope / related ticket>
-- <one-line bullet>
-
----
-
-**Checklist**
-
-- [x] Anything that [should be behind a feature flag](...) is behind a feature flag
-  - N/A. <one-line reason> (or list the flag if applicable)
-- [x] Appropriate tests have been created or updated
-  - <N new tests across <file/suite>; full <scope> suite M/M green.>
-
----
-
-**Verification Evidence**
-
-_Attach screenshots, screen recordings, links, or any other evidence that you've tested locally and the changes are working_
-
-<one sentence citing a specific case ID + the observable behavior verified.>
-
-- <preview URL 1>
-- <preview URL 2>
-
-**Preview Testing**
-
-- [ ] a [preview environment](...) is available for QA testing
+- ABC-1915 covers backfilling reasons on past refunds
 ```
 
 ## Rules for bullets
@@ -76,23 +74,24 @@ _Attach screenshots, screen recordings, links, or any other evidence that you've
 
 ## Rules for subsection labels
 
-- Use **bold inline labels** (not `####` headings) under `### What changed`.
+- Use **bold inline labels** (not `####` headings) inside the What section.
 - Typical labels: name them after what's grouped, not after structure. `Helpers`, `Wiring`, `GraphQL`, `Also`, `Deleted` are all good. Avoid generic ones like "Code Changes" or "Implementation Details".
 - 2-4 subsections is the sweet spot. If you have 1 you don't need them; if you have 5+ the MR is probably too big.
 - An optional path or scope hint in parens after the label is helpful: `**Helpers** (`src/cart/.../helpers/`)`.
 
-## Rules for the "Also" / "Follow-up" sections
+## Rules for the "Also" / "Follow-up" labels
 
-- **Also**: orthogonal in-MR changes (renames, drive-by fixes, cosmetic patches) that reviewers should know about but aren't the main work. One line each. Don't promote to its own heading.
-- **Follow-up**: descopes, related tickets, known limitations the reviewer should be aware of. One line each. Skip the section entirely if there's nothing to say.
-- If the **Also** or **Follow-up** sections are growing past 3 bullets each, you have padding. Cut.
+- **Also**: orthogonal in-MR changes (renames, drive-by fixes, cosmetic patches) that reviewers should know about but aren't the main work. One line each.
+- **Follow-up**: descopes, related tickets, known limitations the reviewer should be aware of. One line each. Skip the label entirely if there's nothing to say.
+- Both are the last labels in the What section, never sections of their own. Past 3 bullets each, you have padding. Cut.
 
 ## Rules for Verification Evidence
 
+Under the template's helper line:
+
 - One sentence with a **specific case ID** and the observable behavior verified. Generic statements ("manually tested locally") are insufficient.
-- A screenshot or Loom is great when available. Skip prose if you have an image.
-- **No Jest output dumps.** "27 new tests; full cart suite 319/319 green" is plenty.
-- Preview URLs go in a flat bullet list. Use markdown link form (`[url](url)`) so they render clickable in GitLab.
+- Then the evidence: the uploaded image or video embed, a Loom, or preview URLs as a flat list of markdown links (`[url](url)`) so they render clickable.
+- **No test output dumps.** Test counts live on the tests checkbox.
 
 ## Don't
 
@@ -101,9 +100,7 @@ _Attach screenshots, screen recordings, links, or any other evidence that you've
 - Don't write framing paragraphs longer than 2 sentences.
 - Don't add multi-sentence bullets with parenthetical paragraphs.
 - Don't add a "Drive-by polish (call out for review)" theatrical heading. Just put it under `**Also**`.
-- Don't leave TODO/placeholder sections.
 - Don't include giant code fences of diff or test logs.
-- Don't mix the two styles (Template-Preserving and Minimal). Pick one.
 
 ## Anti-patterns I have fallen into
 
@@ -113,13 +110,22 @@ _Attach screenshots, screen recordings, links, or any other evidence that you've
 - Adding cookie-cutter "follow-up" sub-bullets that just rephrase what's already in linked tickets. If ABC-1915 covers a follow-up, the bullet is `ABC-1915 covers X surfaced during verification.` One line.
 - Multi-paragraph Verification Evidence prose. One sentence with the case ID, then the URLs.
 
-## Minimal style
+## Fallback: a repo with no MR template
 
-Only when the change is trivially small and a screenshot carries the explanation. Strip the template entirely:
+Only when the repo has no template at all:
 
 ```markdown
-- <lowercase sentence fragment describing the change>
-- <optional second bullet>
+<one or two framing sentences: what this MR does and why>
 
-![image](/uploads/.../image.png){width=... height=...}
+### What changed
+
+**<Bold label>**
+
+- <one-clause bullet>
+
+### Verification
+
+<one sentence with a specific case ID and the observed behavior, then the evidence>
 ```
+
+No checklist here: there is nothing for you to attest.
