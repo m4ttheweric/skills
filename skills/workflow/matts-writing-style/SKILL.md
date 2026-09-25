@@ -75,15 +75,15 @@ Stick to the code in the diff. No scope commentary ("i don't think this MR can f
 The 2-4 paragraph shape is for a substantive code finding, where the mechanism has to be walked. A process ask (missing verification evidence, "please add a test", a nit) is not that finding, and dressing it in the same scaffolding reads as ceremonious. Keep it to one or two casual lines: lead with the approval, phrase the ask as a favor, point at the obvious subject in a few words, and stop. Drop the mechanism recap, the pasted URL, and the paragraph split. An emoji is fine. The whole comment can be:
 
 ```
-suggestion: changes look good. would you mind grabbing some verification evidence? running your new code against the QA claim from the ticket would be 👌
+suggestion: changes look good. would you mind grabbing some verification evidence? running your new code against the QA case from the ticket would be 👌
 ```
 
 A non-blocking `thought` or `question` is the same weight. Claim with the mechanism folded into a parenthetical, then one ask, then stop. Two short paragraphs at most, quick natural sentences, contractions welcome. Don't give the mechanism its own paragraph and don't add an impact beat; the author isn't being asked to act, so they don't need the full walk:
 
 ```
-thought (non-blocking): when the striker's ambiguous (candidates.length !== 1: >2 vehicles, or cargo off a trailer that isn't in collisionVehicleParties) this lands on the filer/IV, the party we're fixing away from.
+thought (non-blocking): when the carrier's ambiguous (candidates.length !== 1: >2 shipments, or a split parcel that isn't in consolidatedShipments) this lands on the sender, the party we're fixing away from.
 
-no worse than before, it always fell back to the filer. but could an ambiguous fell-from fall to the generic 'vehicle' instead, so we don't actively name the IV? not blocking.
+no worse than before, it always fell back to the sender. but could an ambiguous split fall to the generic 'shipment' instead, so we don't actively name the sender? not blocking.
 ```
 
 The over-built version of that same note ran four paragraphs: a claim, a separate mechanism walk, a "not a regression" impact paragraph, and the ask. Everything past the two paragraphs above was scaffolding for a note nobody has to act on.
@@ -95,7 +95,7 @@ Even a real, blocking-adjacent finding is a few sentences, not a report. The mos
 Over-built (every link spelled out, downstream consequence restated, report tone):
 
 ```
-**issue (non-blocking):** on the identify-reject path this re-serves the generic-context variation to `shouldWaitForMount` consumers. `setContext` lives inside the `fetchFlagSettings().then`, so when `identify()` rejects the active context is still the bootstrap generic one and `variation()` returns the generic value. for an individually-targeted user on an `off`-fallthrough tenant that value is `off`, so the guard redirects... the exact CV-2688 bounce, reintroduced on the failure path. `useIdentifiedFlagValue` can't rescue it since the context never flipped. the failing-identify test encodes this. it's defensible as fail-closed-to-legacy, but should be a conscious decision.
+**issue (non-blocking):** on the identify-reject path this re-serves the generic-context variation to `shouldWaitForMount` consumers. `setContext` lives inside the `fetchFlagSettings().then`, so when `identify()` rejects the active context is still the bootstrap generic one and `variation()` returns the generic value. for an individually-targeted user on an `off`-fallthrough tenant that value is `off`, so the guard redirects... the exact bounce the ticket fixed, reintroduced on the failure path. `useIdentifiedFlagValue` can't rescue it since the context never flipped. the failing-identify test encodes this. it's defensible as fail-closed-to-legacy, but should be a conscious decision.
 ```
 
 Compressed (same finding, same ask):
@@ -128,7 +128,7 @@ Soften assertions, including ones you're confident about. Reach for "probably", 
 
 Concede the limits of your own reasoning. "it's the pre-existing behavior but who knows if that's right" beats claiming the pre-existing behavior is correct; owning the uncertainty reads as trustworthy, not weak.
 
-Cut your own justification. Once the point lands, delete the clause that explains or defends it (drop "every chip used it before this change" after "it's the pre-existing behavior"; drop "and we'd lose the good single-vehicle case" after the case is already clear).
+Cut your own justification. Once the point lands, delete the clause that explains or defends it (drop "every chip used it before this change" after "it's the pre-existing behavior"; drop "and we'd lose the good single-item case" after the case is already clear).
 
 Praise flows up, not down. `good call. changed to \`Record<EnumType, string>\`.` is right when conceding a reviewer's catch on your own MR; praise in reviewer mode gets cut (see the summary note section).
 

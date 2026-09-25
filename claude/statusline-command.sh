@@ -137,7 +137,7 @@ fi
 # has two lines); "implementer complete" lines are excluded (partial step).
 #
 # Fallback: a plan under docs/superpowers/plans/ (.local-dev/superpowers/plans/
-# in assured-dev) with SOME boxes checked, for work tracked by checkboxes
+# in repos that keep plans untracked) with SOME boxes checked, for work tracked by checkboxes
 # instead of a ledger. Untouched plans (0 checked) stay hidden: a written plan
 # is not an ongoing implementation.
 plan_seg=""
