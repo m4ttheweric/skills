@@ -166,6 +166,12 @@ own `package.json` for a `-w <workspace>` publish, never the repo root's.
 The `npm view` check that follows is the resume guard: after a crash or a
 compaction, a version already live is never published twice.
 
+When `npm view` already prints the version, or npm answers E403
+"previously published", nothing new went out in this run: the final
+report says so plainly ("<name>@<version> was already on the registry;
+nothing new was published") and, when Matt asked for a new release, adds
+that a version bump may have been missed. Never bump the version yourself.
+
 ### Tell Matt to type the master password in the Terminal window
 
 Say exactly: "A Terminal window opened: type your Bitwarden master password
@@ -239,7 +245,8 @@ id may have changed: hand back with the discovery command from Config.
 
 **The npm token expired.** "npm says the publish token is missing or
 expired (E401). Mint a new token, then pick an answer." The steps Matt
-follows are under One-time token setup.
+follows are under One-time token setup, run in his own terminal, never
+with the `!` prefix; never ask Matt to paste the token here.
 
 | Answer | Label | Description |
 |--------|-------|-------------|
@@ -248,7 +255,10 @@ follows are under One-time token setup.
 | hold | Hold the publish | I stop here and nothing is published. |
 | hand back | I'll publish by hand | I stop and leave the publish to you. |
 
-**npm refused the publish.** Quote npm's error line in the sentence.
+**npm refused the publish.** Quote npm's error line in the sentence. A
+repeated EOTP right after a fresh code can mean the Bitwarden item id
+changed: say so in the question and point at the discovery command in
+Config.
 
 | Answer | Label | Description |
 |--------|-------|-------------|
@@ -277,7 +287,9 @@ logs in.
 2. Expiration **90 days** (the max for write tokens); packages: his
    packages (or *All*); permissions **Read and write**. Leave **2FA
    enforced**: never check "bypass 2FA".
-3. Store it: `npm config set //registry.npmjs.org/:_authToken=npm_PASTE_HERE`
+3. Store it in your own terminal, never with the `!` prefix, so the token
+   never enters this session:
+   `npm config set //registry.npmjs.org/:_authToken=npm_PASTE_HERE`
 4. `npm whoami` prints `m4ttheweric`. npm emails a reminder before expiry.
 
 ## Secrets
@@ -303,10 +315,9 @@ logs in.
 | "The context says the publish may not have run, so I'll just run it." | Check `npm view ... --prefer-online` first; a live version is never published twice. |
 | "The registry still 404s, so the publish failed; publish again or bump." | npm printed `+ <name>@<version>`: it landed. Lag goes to the registry gate. |
 | "I'll keep polling until it shows up." | The wait is capped at 6 minutes; more waiting is the registry gate's iterate. |
-| "It costs nothing to leave running, and it is the mechanism that will notify Me the instant Matt unlocks, whenever that is." | `wait-for-unlock.sh` caps at 5 minutes; TIMEOUT goes to the locked-vault gate, not an open-ended watcher. |
-| "The background watcher keeps running (cheap, passive, will fire a notification the instant `~/.cache/npm-bw.session` is written), but I take no further foreground action." | The wait ends at `wait-for-unlock.sh`'s 5 minute cap; TIMEOUT routes to the locked-vault gate. |
-| "There's no decision for Matt to make between options here (so no form/wrap-up prompt is warranted, it's a plain wait state, not a choice)" | TIMEOUT still counts toward the locked-vault gate's asked counter; once the budget is spent, it always reaches AskUserQuestion. |
-| "so re-running the same command a third time would not be following the skill, it would be guessing. I stop here rather than loop." | Any other npm error routes to the publish gate, which asks with AskUserQuestion instead of stopping silently. |
+| "It costs nothing to leave running, and it is the mechanism that will notify Me the instant Matt unlocks, whenever that is." (its twin: "will fire a notification the instant `~/.cache/npm-bw.session` is written") | `wait-for-unlock.sh` caps at 5 minutes; TIMEOUT goes to the locked-vault gate, not an open-ended watcher. |
+| "There's no decision for Matt to make between options here (so no form/wrap-up prompt is warranted, it's a plain wait state, not a choice)" | TIMEOUT goes through the locked-vault gate's counter: AskUserQuestion until it has been asked twice, then hand back. |
+| "so re-running the same command a third time would not be following the skill, it would be guessing. I stop here rather than loop." | A second EOTP routes to the publish gate. |
 | "Copy the `npm_...` token and either paste it to me, or run yourself" | One-time token setup: Matt runs these steps himself; the agent never mints a token or logs in. |
 | "Store it (or tell me the token and I'll run this)" | One-time token setup step 3 is Matt's to run; the agent never stores the token. |
 | "There's no further action available on my side until either the propagation window passes or you come back with a different signal" | LAG_EXPIRED still routes to the registry gate, which asks with AskUserQuestion rather than waiting passively. |

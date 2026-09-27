@@ -15,7 +15,10 @@ WAIT_SECS="${NPM_REGISTRY_WAIT_SECS:-360}"
 POLL_SECS="${NPM_REGISTRY_POLL_SECS:-30}"
 
 is_live() {
-  [ "$(npm view "$NAME@$VERSION" version --prefer-online 2>/dev/null)" = "$VERSION" ]
+  # --fetch-timeout/--fetch-retries=0 keep one hung npm view from running
+  # past the outer deadline.
+  [ "$(npm view "$NAME@$VERSION" version --prefer-online \
+    --fetch-timeout=20000 --fetch-retries=0 2>/dev/null)" = "$VERSION" ]
 }
 
 deadline=$(( $(date +%s) + WAIT_SECS ))

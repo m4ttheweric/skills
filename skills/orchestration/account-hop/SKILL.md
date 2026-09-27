@@ -108,7 +108,8 @@ enters its gate through that counter too.
 
 The two precondition checks read the environment herdr sets in every
 claude pane and the cswap install; when either is missing, say which and
-stop.
+stop. "Set" means `HERDR_ENV` is exactly `1` and the other three
+variables are non-empty; `HERDR_ENV=0` counts as not set.
 
 ### Pick the model alias this session runs as
 
@@ -127,22 +128,26 @@ least the matching accounts.
 
 The picker's newest copy lives in the mattstack plugin cache; the graph's
 call resolves it by version sort in the same command. One AskUserQuestion,
-single choice: one option per account with its headroom line verbatim as
-the description, the current account marked "(current)", the healthiest
-non-current account first and recommended, and a last option **Stay on
-this account** ("I don't hop; this session keeps going here."). Never
-offer or recommend an account whose `cswap list --json` row has
-`usageStatus` `relogin_required`, `no_credentials` or `api_key`: a dead
-account fails only after this session has exited, stranding Matt. Labels
-are 2 to 6 words (the email alone fits).
+single choice: name the current account in the question sentence ("You
+are on <email> now.") and leave it out of the options, so at most 3
+accounts plus a last option **Stay on this account** ("I don't hop; this
+session keeps going here.") stay under AskUserQuestion's 4-option cap.
+Each account option carries its headroom line verbatim as the
+description, with the healthiest non-current account first and
+recommended. Never offer or recommend an account whose `cswap list
+--json` row has `usageStatus` `relogin_required`, `no_credentials` or
+`api_key`: a dead account fails only after this session has exited,
+stranding Matt. Labels are 2 to 6 words (the email alone fits).
 
 ## The hop call
 
 `bash <skill>/scripts/account-hop.sh -a <email> -m <alias>`
 
-Pass `-a` as the email (list numbers can renumber). Pane, pid and session
-id come from the environment; the cwd is the shell's `$PWD`, so add
-`-c <dir>` when the working directory has drifted from the session's
+`-a` takes the email; when Matt named only a list number, pass that
+number as given (the script resolves both numbers and emails, but
+numbers can renumber, so prefer the email when it is known). Pane, pid
+and session id come from the environment; the cwd is the shell's `$PWD`,
+so add `-c <dir>` when the working directory has drifted from the session's
 project dir. `-h` lists the rest (direction, timeout, no-exit, no-focus,
 keep-origin-pane). The script resolves the account to exactly one row,
 refuses a dead one ("is unusable (usageStatus=...)") or an unmatched one
@@ -197,6 +202,9 @@ when the turn ends, and the waiter resumes only after this process dies.
   (default 300s) it prints the manual resume command.
 - The resumed pane runs under the target account's plugin cache, so
   missing-plugin symptoms there are expected; do not chase them.
+- Once the origin claude has exited, the waiter closes the origin pane;
+  `-O` keeps it open instead. On waiter timeout the pane is left open
+  either way.
 
 ## Rationalizations
 
