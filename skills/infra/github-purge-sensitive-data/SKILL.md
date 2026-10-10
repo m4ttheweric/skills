@@ -44,6 +44,7 @@ with the Agent tool:
 
 - `subagent_type`: `fast-browser:browser-driver`
 - `model`: `haiku`
+- `effort`: `medium`
 - `prompt`: the filled brief, verbatim
 
 The brief carries the form route, so the subagent does not hunt for a topic.
