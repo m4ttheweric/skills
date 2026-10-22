@@ -2,8 +2,7 @@
 # Claude Code status line: shows the active model (abbreviated to its first
 # letter), account email, an in-progress superpowers plan's completion (when
 # one is found for this workspace), the Fable weekly pool (F, Fable sessions
-# only), weekly usage (W) and context usage (C), then whether this session is
-# signed in to rt chat.
+# only), weekly usage (W) and context usage (C).
 
 input=$(cat)
 
@@ -105,83 +104,78 @@ usage=""
 [ -n "$context" ] && usage="${usage}C:$(sev_pct "$context")"
 usage="${usage% }"
 
-# Whether THIS session is signed in to rt chat (the agent group chat), shown
-# as the session's chat handle. The rt CLI writes a session file on sign-in
-# and deletes it on sign-out, keyed by the statusline payload's own
-# session_id; the file's `handle` field is the agent's chat name.
-session_id=$(echo "$input" | jq -r '.session_id // empty')
-session_file="$HOME/.mattstack/rt/chat/sessions/$session_id.json"
-if [ -n "$session_id" ] && [ -f "$session_file" ]; then
-  handle=$(jq -r '.handle // empty' "$session_file" 2>/dev/null)
-  if [ -n "$handle" ]; then
-    chat_str="$handle 🟢"
-  else
-    chat_str="online 🟢"
-  fi
-else
-  chat_str="offline"
-fi
-
-# In-progress superpowers implementation, walking cwd -> worktree -> project
-# root so a session inside a worktree finds that tree's own state first.
+# In-progress superpowers implementation. Candidate roots are cwd, then
+# worktree, then project root; each signal is searched across all of them in
+# that order, so a checkout's docs/superpowers/plans/ never hides a worktree's
+# live ledger.
 #
-# Primary signal: the subagent-driven-development ledger at
+# Primary signal: the subagent-driven-development / executing-plans ledger at
 # .superpowers/sdd/<plan-basename>/progress.md. Its first line names the plan
-# file, and each finished task gets a completion line; the plan's checkboxes
-# are NOT updated during SDD runs, so they can't measure progress there. Only
-# a ledger touched in the last 7 days counts as ongoing (SDD appends to it
-# constantly while running; stale ledgers are abandoned or superseded work).
-# The match is case-insensitive and not anchored to line start, so variant
-# phrasing (e.g. "Task 7 repo-side COMPLETE" mid-line) counts alongside the
-# canonical "Task N: complete". Completion counts unique task numbers (Task 6
-# has two lines); "implementer complete" lines are excluded (partial step).
+# file, and each finished task gets a `Task <N>: complete (...)` line; the
+# plan's checkboxes are NOT updated during these runs, so they can't measure
+# progress there. Only a ledger touched in the last 7 days counts as ongoing
+# (stale ledgers are abandoned or superseded work). The match is anchored at
+# line start: free-text ledger notes mention tasks and the word "complete"
+# ("Task 6: dispatched (... complete code in brief)") without finishing them.
+#
+# Finished plans: both skills delete the plan's workspace once the final
+# review is clean, so a live ledger is remembered per root in
+# ~/.claude/statusline-state/. When a remembered ledger's directory is gone,
+# the plan finished: show it as done for a day, then forget it.
 #
 # Fallback: a plan under docs/superpowers/plans/ (.local-dev/superpowers/plans/
-# in repos that keep plans untracked) with SOME boxes checked, for work tracked by checkboxes
-# instead of a ledger. Untouched plans (0 checked) stay hidden: a written plan
-# is not an ongoing implementation.
+# in repos that keep plans untracked) with SOME boxes checked, for work tracked
+# by checkboxes instead of a ledger. Untouched plans (0 checked) stay hidden: a
+# written plan is not an ongoing implementation.
 plan_seg=""
-plan_checked="" plan_total="" plan_name=""
+plan_checked="" plan_total="" plan_name="" plan_done=""
 sp_cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
 sp_worktree=$(echo "$input" | jq -r '.worktree.path // empty')
 sp_project=$(echo "$input" | jq -r '.workspace.project_dir // empty')
+sp_state_dir="$HOME/.claude/statusline-state"
 
-sp_root=""
 for sp_r in "$sp_cwd" "$sp_worktree" "$sp_project"; do
   [ -n "$sp_r" ] || continue
-  for sp_rel in ".superpowers/sdd" ".local-dev/superpowers/plans" "docs/superpowers/plans"; do
-    if [ -d "$sp_r/$sp_rel" ]; then
-      sp_root="$sp_r"
-      break 2
-    fi
-  done
+  ledger=$(ls -t "$sp_r"/.superpowers/sdd/*/progress.md 2>/dev/null | head -1)
+  [ -n "$ledger" ] && [ -n "$(find "$ledger" -mtime -7 2>/dev/null)" ] &&
+    head -1 "$ledger" | grep -q '^# SDD ledger' || continue
+  sdd_plan=$(head -1 "$ledger" | sed 's/.*plan:[[:space:]]*//')
+  case "$sdd_plan" in
+    /*) : ;;
+    *) sdd_plan="$sp_r/$sdd_plan" ;;
+  esac
+  [ -f "$sdd_plan" ] || continue
+  plan_total=$(grep -cE '^##+ Task [0-9]+[:.]' "$sdd_plan")
+  plan_checked=$(grep -E '^Task [0-9]+: complete' "$ledger" |
+    sed -E 's/^Task ([0-9]+).*/\1/' | sort -un | wc -l | tr -d ' ')
+  if grep -qE '^FINAL\b' "$ledger"; then
+    plan_checked="$plan_total"
+  fi
+  plan_name=$(basename "$sdd_plan" .md | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
+  mkdir -p "$sp_state_dir" 2>/dev/null &&
+    printf '%s\n%s\n' "$(dirname "$ledger")" "$plan_name" \
+      > "$sp_state_dir/sdd${sp_r//\//_}" 2>/dev/null
+  break
 done
 
-if [ -n "$sp_root" ]; then
-  ledger=$(ls -t "$sp_root"/.superpowers/sdd/*/progress.md 2>/dev/null | head -1)
-  if [ -n "$ledger" ] && [ -n "$(find "$ledger" -mtime -7 2>/dev/null)" ] &&
-     head -1 "$ledger" | grep -q '^# SDD ledger'; then
-    sdd_plan=$(head -1 "$ledger" | sed 's/.*plan:[[:space:]]*//')
-    case "$sdd_plan" in
-      /*) : ;;
-      *) sdd_plan="$sp_root/$sdd_plan" ;;
-    esac
-    if [ -f "$sdd_plan" ]; then
-      plan_total=$(grep -cE '^##+ Task [0-9]+[:.]' "$sdd_plan")
-      plan_checked=$(grep -iE 'Task [0-9]+.*complete' "$ledger" |
-        grep -vi 'implementer complete' |
-        sed -E 's/.*Task ([0-9]+).*/\1/' | sort -un | wc -l | tr -d ' ')
-      # A "FINAL" line at the start of a ledger entry is the plan-level
-      # completion signal; treat it as all tasks done.
-      if grep -qE '^FINAL\b' "$ledger"; then
-        plan_checked="$plan_total"
-      fi
-      plan_name=$(basename "$sdd_plan" .md | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
+if [ -z "$plan_total" ]; then
+  for sp_r in "$sp_cwd" "$sp_worktree" "$sp_project"; do
+    [ -n "$sp_r" ] || continue
+    sp_state="$sp_state_dir/sdd${sp_r//\//_}"
+    [ -f "$sp_state" ] || continue
+    if [ -z "$(find "$sp_state" -mtime -1 2>/dev/null)" ]; then
+      rm -f "$sp_state"
+      continue
     fi
-  fi
+    if [ ! -d "$(sed -n 1p "$sp_state")" ]; then
+      plan_name=$(sed -n 2p "$sp_state")
+      plan_done=1
+      break
+    fi
+  done
 fi
 
-if [ -z "$plan_total" ] || [ "$plan_total" -eq 0 ]; then
+if [ -z "$plan_done" ] && { [ -z "$plan_total" ] || [ "$plan_total" -eq 0 ]; }; then
   plans_dir=""
   for sp_r in "$sp_cwd" "$sp_worktree" "$sp_project"; do
     [ -n "$sp_r" ] || continue
@@ -210,8 +204,9 @@ if [ -z "$plan_total" ] || [ "$plan_total" -eq 0 ]; then
   fi
 fi
 
-if [ -n "$plan_total" ] && [ "$plan_total" -gt 0 ] &&
-   [ -n "$plan_checked" ] && [ "$plan_checked" -ge "$plan_total" ]; then
+if [ -n "$plan_done" ] ||
+   { [ -n "$plan_total" ] && [ "$plan_total" -gt 0 ] &&
+     [ -n "$plan_checked" ] && [ "$plan_checked" -ge "$plan_total" ]; }; then
   plan_seg=$(printf "%s \033[38;5;77m✅\033[0m" "$plan_name")
 elif [ -n "$plan_total" ] && [ "$plan_total" -gt 0 ] &&
    [ -n "$plan_checked" ]; then
@@ -235,7 +230,6 @@ fi
 segments=("$model" "$email")
 [ -n "$plan_seg" ] && segments+=("$plan_seg")
 [ -n "$usage" ] && segments+=("$usage")
-segments+=("$chat_str")
 
 out=""
 for seg in "${segments[@]}"; do
