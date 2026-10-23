@@ -119,9 +119,14 @@ usage="${usage% }"
 # ("Task 6: dispatched (... complete code in brief)") without finishing them.
 #
 # Finished plans: both skills delete the plan's workspace once the final
-# review is clean, so a live ledger is remembered per root in
-# ~/.claude/statusline-state/. When a remembered ledger's directory is gone,
-# the plan finished: show it as done for a day, then forget it.
+# review is clean, so a finished plan is read from rt's shared record
+# (`rt progress list --tree <root> --refresh --json`, which records first so a
+# finish stored after the workspace delete shows at once), asked only when no live ledger is
+# found and <root>/.superpowers/sdd exists. A plan rt calls done shows as done
+# for a day. An rt without the verb prints nothing here.
+#
+# A task is done when its `Task <N>: complete` line exists, or when every
+# lettered part the ledger mentions (`Task <N>a:` ...) has a complete line.
 #
 # Fallback: a plan under docs/superpowers/plans/ (.local-dev/superpowers/plans/
 # in repos that keep plans untracked) with SOME boxes checked, for work tracked
@@ -132,7 +137,33 @@ plan_checked="" plan_total="" plan_name="" plan_done=""
 sp_cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
 sp_worktree=$(echo "$input" | jq -r '.worktree.path // empty')
 sp_project=$(echo "$input" | jq -r '.workspace.project_dir // empty')
-sp_state_dir="$HOME/.claude/statusline-state"
+
+# Count of done tasks in a ledger under the lettered rule (same as rt's
+# countDoneTasks).
+sdd_done_tasks() {
+  awk '
+    /^Task[ \t]+[0-9]+[a-z]?:/ {
+      head = $0; sub(/^Task[ \t]+/, "", head)
+      n = head; sub(/[^0-9].*/, "", n)
+      letter = substr(head, length(n) + 1, 1)
+      if (letter !~ /[a-z]/) letter = ""
+      c = ($0 ~ /^Task[ \t]+[0-9]+[a-z]?:[ \t]*complete([^A-Za-z0-9_]|$)/)
+      if (letter == "") { if (c) whole[n] = 1; next }
+      part[n, letter] = 1
+      if (c) pdone[n, letter] = 1
+    }
+    END {
+      for (n in whole) count++
+      for (k in part) { split(k, a, SUBSEP); if (!(a[1] in whole)) cand[a[1]] = 1 }
+      for (n in cand) {
+        ok = 1
+        for (k in part) { split(k, a, SUBSEP); if (a[1] == n && !(k in pdone)) ok = 0 }
+        if (ok) count++
+      }
+      print count + 0
+    }
+  ' "$1"
+}
 
 for sp_r in "$sp_cwd" "$sp_worktree" "$sp_project"; do
   [ -n "$sp_r" ] || continue
@@ -146,29 +177,23 @@ for sp_r in "$sp_cwd" "$sp_worktree" "$sp_project"; do
   esac
   [ -f "$sdd_plan" ] || continue
   plan_total=$(grep -cE '^##+ Task [0-9]+[:.]' "$sdd_plan")
-  plan_checked=$(grep -E '^Task [0-9]+: complete' "$ledger" |
-    sed -E 's/^Task ([0-9]+).*/\1/' | sort -un | wc -l | tr -d ' ')
-  if grep -qE '^FINAL\b' "$ledger"; then
-    plan_checked="$plan_total"
-  fi
+  plan_checked=$(sdd_done_tasks "$ledger")
   plan_name=$(basename "$sdd_plan" .md | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
-  mkdir -p "$sp_state_dir" 2>/dev/null &&
-    printf '%s\n%s\n' "$(dirname "$ledger")" "$plan_name" \
-      > "$sp_state_dir/sdd${sp_r//\//_}" 2>/dev/null
   break
 done
 
 if [ -z "$plan_total" ]; then
+  sp_cut=$(( ($(date +%s) - 86400) * 1000 ))
+  sp_asked=""
   for sp_r in "$sp_cwd" "$sp_worktree" "$sp_project"; do
-    [ -n "$sp_r" ] || continue
-    sp_state="$sp_state_dir/sdd${sp_r//\//_}"
-    [ -f "$sp_state" ] || continue
-    if [ -z "$(find "$sp_state" -mtime -1 2>/dev/null)" ]; then
-      rm -f "$sp_state"
-      continue
-    fi
-    if [ ! -d "$(sed -n 1p "$sp_state")" ]; then
-      plan_name=$(sed -n 2p "$sp_state")
+    [ -n "$sp_r" ] && [ -d "$sp_r/.superpowers/sdd" ] || continue
+    sp_real=$(cd "$sp_r" 2>/dev/null && pwd -P) || continue
+    case "$sp_asked" in *"|$sp_real|"*) continue ;; esac
+    sp_asked="$sp_asked|$sp_real|"
+    done_stem=$(rt progress list --tree "$sp_r" --refresh --json 2>/dev/null |
+      jq -r --argjson cut "$sp_cut" '[.plans[]? | select(.state == "done" and (.finishedAt // 0) > $cut)] | sort_by(.finishedAt) | last | .stem // empty' 2>/dev/null)
+    if [ -n "$done_stem" ]; then
+      plan_name=$(echo "$done_stem" | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
       plan_done=1
       break
     fi
